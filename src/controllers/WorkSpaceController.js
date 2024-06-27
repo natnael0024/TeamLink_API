@@ -34,7 +34,6 @@ const workspaceController = {
     }),
 
     getWorkSpaces: async(async(req,res)=>{
-        const wsId = parseInt(req.params.id)
         let wspcs = await prisma.workspace.findMany({
             where:{
                 ownerId:  parseInt(req.user.userId)
@@ -46,6 +45,61 @@ const workspaceController = {
             },
         })
         return res.status(200).json(wspcs)
+    }),
+
+    getWorkSpace: async(async(req,res)=>{
+        const wsId = parseInt(req.params.id)
+        let ws = await prisma.workspace.findUnique({
+            where:{
+                id:wsId,
+                ownerId:parseInt(req.user.userId)
+            },
+            include: {
+                channels:true,
+                members: true, 
+            },
+        })
+        if(!ws)
+            return res.status(404).json({message:'workSpace not found'})   
+        return res.status(200).json(ws)
+    }),
+
+    updateWorkSpace: async(async(req,res)=>{
+        const wsId = parseInt(req.params.id)
+        let {name,description,is_private,logo,cover} = req.body
+        try{
+            let updatedWs = await prisma.workspace.update({
+                where:{
+                    id:wsId,
+                    ownerId:parseInt(req.user.userId),
+                },
+                data:{
+                    name,
+                    description,
+                    is_private,
+                    logo,
+                    cover
+                }
+            })
+            if(!updatedWs)
+                return res.status(404).json({message:'workSpace not found'})   
+            return res.status(200).json(updatedWs)
+        } catch(e){
+            throw e
+        }
+    }),
+
+    deleteWorkSpace: async(async(req,res)=>{
+        const wsId = parseInt(req.params.id)
+        let ws = await prisma.workspace.delete({
+            where:{
+                id:wsId,
+                ownerId:parseInt(req.user.userId)
+            }
+        })
+        if(!ws)
+            return res.status(404).json({message:'workSpace not found'}) 
+        return res.status(204).json({message:'workspace deleted successfully'})   
     })
 }
 
