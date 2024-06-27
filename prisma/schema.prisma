@@ -14,7 +14,9 @@ model User {
   username                           String?
   email                              String            @unique
   password                           String
-  avatar                             String?           
+  avatar                             String? 
+  created_at DateTime @default(now())
+  updated_at DateTime? @updatedAt          
   ChannelMember                      ChannelMember[]
   Message_Message_recipient_idToUser Message[]         @relation("Message_recipient_idToUser")
   Message_Message_sender_idToUser    Message[]         @relation("Message_sender_idToUser")
@@ -30,8 +32,10 @@ model Workspace {
   is_private      Boolean           @default(true)
   logo            String?           @db.VarChar(500)
   cover           String?           @db.VarChar(500)
+  created_at DateTime @default(now())
+  updated_at DateTime? @updatedAt
   channels        Channel[]
-  members         WorkspaceMember[]
+  members         WorkspaceMember[] 
   owner           User              @relation(fields: [ownerId], references: [id])
 }
 
@@ -40,8 +44,10 @@ model WorkspaceMember {
   user_id      Int
   workspace_id Int
   is_owner     Boolean   @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime? @updatedAt
   User         User      @relation(fields: [user_id], references: [id])
-  Workspace    Workspace @relation(fields: [workspace_id], references: [id])
+  Workspace    Workspace @relation(fields: [workspace_id], references: [id] ,onDelete: Cascade) 
 }
 
 model Channel {
@@ -50,6 +56,8 @@ model Channel {
   name          String
   avatar        String?
   cover         String?
+  created_at DateTime @default(now())
+  updated_at DateTime? @updatedAt
   Workspace     Workspace       @relation(fields: [workspace_id], references: [id])
   members       ChannelMember[]
   messages      Message[]
@@ -59,8 +67,10 @@ model ChannelMember {
   id         Int  @id @default(autoincrement())
   user_id    Int
   channel_id Int
-  Channel    Channel @relation(fields: [channel_id], references: [id])
-  user       User?   @relation(fields: [user_id], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime? @updatedAt
+  Channel    Channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+  user       User?   @relation(fields: [user_id], references: [id],onDelete: Cascade)
 }
 
 model Message {
@@ -68,6 +78,8 @@ model Message {
   sender_id                       Int
   recipient_id                    Int?
   channel_id                      Int?
+  created_at                      DateTime @default(now())
+  updated_at                      DateTime? @updatedAt
   Attachment                      Attachment[]
   Channel                         Channel?     @relation(fields: [channel_id], references: [id])
   recipient                       User?        @relation("Message_recipient_idToUser", fields: [recipient_id], references: [id])
@@ -81,5 +93,7 @@ model Attachment {
   file_type  String?
   file_size  String?
   file_path  String  @db.VarChar(500)
+  created_at DateTime @default(now())
+  updated_at DateTime? @updatedAt
   Message    Message @relation(fields: [message_id], references: [id])
 }
