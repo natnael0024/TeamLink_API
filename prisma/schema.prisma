@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                                 Int            @id @default(autoincrement())
+  first_name                         String?
+  last_name                          String?
+  username                           String?
+  email                              String            @unique
+  password                           String
+  avatar                             String?           
+  ChannelMember                      ChannelMember[]
+  Message_Message_recipient_idToUser Message[]         @relation("Message_recipient_idToUser")
+  Message_Message_sender_idToUser    Message[]         @relation("Message_sender_idToUser")
+  WorkspaceMember                    WorkspaceMember[]
+  Workspace                          Workspace[]
+}
+
+model Workspace {
+  id              Int            @id @default(autoincrement())
+  ownerId         Int
+  name            String
+  description     String?           @db.VarChar(255)
+  is_private      Boolean           @default(true)
+  logo            String?           @db.VarChar(500)
+  cover           String?           @db.VarChar(500)
+  channels        Channel[]
+  members         WorkspaceMember[]
+  owner           User              @relation(fields: [ownerId], references: [id])
+}
+
+model WorkspaceMember {
+  id           Int    @id @default(autoincrement())
+  user_id      Int
+  workspace_id Int
+  is_owner     Boolean   @default(false)
+  User         User      @relation(fields: [user_id], references: [id])
+  Workspace    Workspace @relation(fields: [workspace_id], references: [id])
+}
+
+model Channel {
+  id            Int          @id @default(autoincrement())
+  workspace_id  Int
+  name          String
+  avatar        String?
+  cover         String?
+  Workspace     Workspace       @relation(fields: [workspace_id], references: [id])
+  members       ChannelMember[]
+  messages      Message[]
+}
+
+model ChannelMember {
+  id         Int  @id @default(autoincrement())
+  user_id    Int
+  channel_id Int
+  Channel    Channel @relation(fields: [channel_id], references: [id])
+  user       User?   @relation(fields: [user_id], references: [id])
+}
+
+model Message {
+  id                              Int       @id @default(autoincrement())
+  sender_id                       Int
+  recipient_id                    Int?
+  channel_id                      Int?
+  Attachment                      Attachment[]
+  Channel                         Channel?     @relation(fields: [channel_id], references: [id])
+  recipient                       User?        @relation("Message_recipient_idToUser", fields: [recipient_id], references: [id])
+  sender                          User         @relation("Message_sender_idToUser", fields: [sender_id], references: [id])
+}
+
+model Attachment {
+  id         Int  @id @default(autoincrement())
+  message_id Int
+  file_name  String?
+  file_type  String?
+  file_size  String?
+  file_path  String  @db.VarChar(500)
+  Message    Message @relation(fields: [message_id], references: [id])
+}
