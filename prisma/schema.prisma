@@ -8,92 +8,121 @@ datasource db {
 }
 
 model User {
-  id                                 Int            @id @default(autoincrement())
+  id                                 Int               @id @default(autoincrement())
   first_name                         String?
   last_name                          String?
   username                           String?
   email                              String            @unique
   password                           String
-  avatar                             String? 
-  created_at DateTime @default(now())
-  updated_at DateTime? @updatedAt          
+  avatar                             String?
+  created_at                         DateTime          @default(now())
+  updated_at                         DateTime?         @updatedAt
   ChannelMember                      ChannelMember[]
   Message_Message_recipient_idToUser Message[]         @relation("Message_recipient_idToUser")
   Message_Message_sender_idToUser    Message[]         @relation("Message_sender_idToUser")
   WorkspaceMember                    WorkspaceMember[]
   Workspace                          Workspace[]
+
+  @@index([id])
 }
 
 model Workspace {
-  id              Int            @id @default(autoincrement())
-  ownerId         Int
-  name            String
-  description     String?           @db.VarChar(255)
-  is_private      Boolean           @default(true)
-  logo            String?           @db.VarChar(500)
-  cover           String?           @db.VarChar(500)
-  created_at DateTime @default(now())
-  updated_at DateTime? @updatedAt
-  channels        Channel[]
-  members         WorkspaceMember[] 
-  owner           User              @relation(fields: [ownerId], references: [id])
+  id                  Int                   @id @default(autoincrement())
+  ownerId             Int
+  name                String
+  description         String?               @db.VarChar(255)
+  is_private          Boolean               @default(true)
+  logo                String?               @db.VarChar(500)
+  cover               String?               @db.VarChar(500)
+  created_at          DateTime              @default(now())
+  updated_at          DateTime?             @updatedAt
+  channels            Channel[]
+  members             WorkspaceMember[]
+  owner               User                  @relation(fields: [ownerId], references: [id])
+  WorkspaceInvitation WorkspaceInvitation[]
+
+  @@index([id])
+}
+
+model WorkspaceInvitation {
+  id           Int      @id @default(autoincrement())
+  email        String
+  token        String   @unique
+  workspace_id Int
+  status       Boolean  @default(false)
+  expires_at   DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  workspace Workspace @relation(fields: [workspace_id], references: [id])
+
+  @@index([workspace_id])
 }
 
 model WorkspaceMember {
-  id           Int    @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   user_id      Int
   workspace_id Int
   is_owner     Boolean   @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime? @updatedAt
+  created_at   DateTime  @default(now())
+  updated_at   DateTime? @updatedAt
   User         User      @relation(fields: [user_id], references: [id])
-  Workspace    Workspace @relation(fields: [workspace_id], references: [id] ,onDelete: Cascade) 
+  Workspace    Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
 }
 
 model Channel {
-  id            Int          @id @default(autoincrement())
-  workspace_id  Int
-  name          String
-  avatar        String?
-  cover         String?
-  created_at DateTime @default(now())
-  updated_at DateTime? @updatedAt
-  Workspace     Workspace       @relation(fields: [workspace_id], references: [id])
-  members       ChannelMember[]
-  messages      Message[]
+  id           Int             @id @default(autoincrement())
+  workspace_id Int
+  name         String
+  avatar       String?
+  cover        String?
+  created_at   DateTime        @default(now())
+  updated_at   DateTime?       @updatedAt
+  Workspace    Workspace       @relation(fields: [workspace_id], references: [id])
+  members      ChannelMember[]
+  messages     Message[]
+
+  @@index([workspace_id])
 }
 
 model ChannelMember {
-  id         Int  @id @default(autoincrement())
-  user_id    Int
+  id         Int       @id @default(autoincrement())
   channel_id Int
-  created_at DateTime @default(now())
+  user_id    Int
+  created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
-  Channel    Channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
-  user       User?   @relation(fields: [user_id], references: [id],onDelete: Cascade)
+  Channel    Channel?  @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([channel_id])
 }
 
 model Message {
-  id                              Int       @id @default(autoincrement())
-  sender_id                       Int
-  recipient_id                    Int?
-  channel_id                      Int?
-  created_at                      DateTime @default(now())
-  updated_at                      DateTime? @updatedAt
-  Attachment                      Attachment[]
-  Channel                         Channel?     @relation(fields: [channel_id], references: [id])
-  recipient                       User?        @relation("Message_recipient_idToUser", fields: [recipient_id], references: [id])
-  sender                          User         @relation("Message_sender_idToUser", fields: [sender_id], references: [id])
+  id           Int          @id @default(autoincrement())
+  sender_id    Int
+  recipient_id Int?
+  channel_id   Int?
+  created_at   DateTime     @default(now())
+  updated_at   DateTime?    @updatedAt
+  Attachment   Attachment[]
+  Channel      Channel?     @relation(fields: [channel_id], references: [id])
+  recipient    User?        @relation("Message_recipient_idToUser", fields: [recipient_id], references: [id])
+  sender       User         @relation("Message_sender_idToUser", fields: [sender_id], references: [id])
+
+  @@index([id])
 }
 
 model Attachment {
-  id         Int  @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   message_id Int
   file_name  String?
   file_type  String?
   file_size  String?
-  file_path  String  @db.VarChar(500)
-  created_at DateTime @default(now())
+  file_path  String    @db.VarChar(500)
+  created_at DateTime  @default(now())
   updated_at DateTime? @updatedAt
-  Message    Message @relation(fields: [message_id], references: [id])
+  Message    Message   @relation(fields: [message_id], references: [id])
+
+  @@index([message_id])
 }
