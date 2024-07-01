@@ -2,6 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import authRoutes from './routes/authRoutes.js'
 import wsRoutes from './routes/wsRoutes.js'
+import channelRoutes from './routes/channelRoutes.js'
 import cors from 'cors'
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,6 +29,8 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/workspaces', wsRoutes)
+app.use('/api/channels', channelRoutes)
+
 
 
 
