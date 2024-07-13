@@ -1,4 +1,4 @@
-# TeamLink: A Node.js/Express.js API for Team Communication
+# TeamLink: A Node.js/Express.js API for Team Communication platform
 ## Overview
 TeamLink is a RESTful API built with Node.js and Express.js that facilitates seamless communication within teams. It provides functionalities for sending messages, creating channels, managing users, and performing other essential team communication tasks. This API empowers developers to integrate robust communication features into their web applications, fostering collaboration and information sharing.
 
