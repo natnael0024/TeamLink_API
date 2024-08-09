@@ -2,6 +2,10 @@ import {prisma} from '../db/index.js'
 import async from 'express-async-handler'
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import AuthController from './AuthController.js';
+import bcrypt from 'bcrypt'
+const saltRounds = 10
+
 
 // Function to generate a unique invitation token
 function generateInvitationToken(wsId) {
@@ -12,6 +16,7 @@ function generateInvitationToken(wsId) {
 
 const workspaceController = {
     create: async(async(req,res)=>{
+      console.log(req.body)
         let {name, description, is_private, logo, cover} = req.body
         if(!name){
             return res.status(400).json({message:'workspace name is required'})
@@ -28,6 +33,7 @@ const workspaceController = {
                     cover:cover
                 }
             })
+            
             // add creator to workspacemember
             let wsm = await prisma.workspaceMember.create({
                data:{
@@ -36,6 +42,23 @@ const workspaceController = {
                     is_owner: true
                } 
             })
+            // create general channel
+            let generalChannel = await prisma.channel.create({
+              data:{
+                  workspace_id:newWorkspace.id,
+                  name:'general',
+                  avatar:null,
+                  cover:null,
+                  is_general: true
+              }
+          })
+            // add creator to channelmember
+            let chm = await prisma.channelMember.create({
+              data:{
+                   channel_id: generalChannel.id,
+                   user_id: parseInt(req.user.userId),
+              }
+           })
             return res.status(201).json(newWorkspace)
         }catch(e){
             throw e
@@ -53,8 +76,8 @@ const workspaceController = {
             },
             include: {
                 // owner: true, 
-                channels: true, // Include associated channels
-                members: true, 
+                // channels: true, // Include associated channels
+                // members: true, 
             },
         })
         return res.status(200).json(wspcs)
@@ -87,11 +110,23 @@ const workspaceController = {
         let ws = await prisma.workspace.findUnique({
             where:{
                 id:wsId,
-                ownerId:parseInt(req.user.userId)
+                members:{
+                  some:{
+                      user_id: parseInt(req.user.userId)
+                  }
+              }
             },
             include: {
-                channels:true,
-                members: true, 
+              channels: {
+                where: {
+                  members: {
+                      some: {
+                          user_id: parseInt(req.user.userId), 
+                      },
+                  },
+                },
+              }, 
+              members: true, 
             },
         })
         if(!ws)
@@ -138,6 +173,7 @@ const workspaceController = {
     }),
 
     sendWorkspaceInvitation: async(async(req,res)=>{
+      console.log(req.body)
         const workspaceId = parseInt(req.params.id)
         const { email } = req.body;
         try {
@@ -187,7 +223,7 @@ const workspaceController = {
                 }
             })
         
-            const invitationLink = `${process.env.BASE_URL}/accept-invitation?token=${invitationToken}`;
+            const invitationLink = `${process.env.FRONTEND_URL}/accept-invitation?invtoken=${invitationToken}`;
             const mailOptions = {
               from: myEmail,
               to: email,
@@ -209,9 +245,9 @@ const workspaceController = {
                           border-radius: 5px;
                           box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
                         }
-                        .button {
+                        .button, a {
                           display: inline-block;
-                          background-color: #007bff;
+                          background-color: #98d9ff;
                           text-decoration: none;
                           color: #ffffff;
                           padding: 10px 20px;
@@ -237,10 +273,83 @@ const workspaceController = {
             return res.status(500).json({ error: 'Failed to send invitation' });
           }
     }),
+
+    getUserEmail: async(async(req,res)=>{
+      const token = req.query.token
+      try{
+        const invitation = await prisma.workspaceInvitation.findUnique({
+          where: {
+            token,
+          },
+          include:{
+            workspace:true
+          }
+        });
+        if (!invitation || invitation.expires_at < new Date()) {
+          return res.status(404).json({ message: 'Invalid or expired invitation' });
+        }
+
+        const user = await prisma.user.findUnique({
+          where:{
+            email: invitation.email
+          }
+        })
+        if(user){
+          let workspaceMembership = await prisma.workspaceMember.findMany({
+            where:{
+              user_id:user.id,
+              workspace_id: invitation.workspace_id
+            }
+          })
+
+          if(workspaceMembership.length < 1){
+            // Add the user to the workspace
+            await prisma.workspaceMember.create({
+              data: {
+                user_id: user.id,
+                workspace_id: invitation.workspace_id,
+                is_owner: false,
+              },
+            })
+          }
+
+          let generalChannel = await prisma.channel.findMany({
+            where:{
+              workspace_id: invitation.workspace_id,
+              is_general: true
+            }
+          })
+          
+          let generalChannelMembership = await prisma.channelMember.findMany({
+            where:{
+              user_id:user.id,
+              channel_id: generalChannel[0].id
+            }
+          })
+
+          if(generalChannelMembership.length < 1){
+            await prisma.channelMember.create({
+              data: {
+                user: {
+                  connect: { id: user.id }, // Connect to the existing user by ID
+                },
+                Channel: {
+                  connect: { id: generalChannel[0].id },
+                }
+              },
+            })
+          }
+
+          return res.status(201).json({message:'Invitation accepted!'})
+        }
+        return res.status(200).json({invitation})
+      }catch(e){
+        throw e
+      }
+    }),
     
     acceptWorkspaceInvitation: async(async (req, res)=>{
-        const { token } = req.query;
-      
+        const token  = req.query.token
         try {
           // Check if the invitation exists and is valid
           const invitation = await prisma.workspaceInvitation.findUnique({
@@ -248,27 +357,34 @@ const workspaceController = {
               token,
             },
           });
-      
+
           if (!invitation || invitation.expires_at < new Date()) {
             return res.status(404).json({ error: 'Invalid or expired invitation' });
           }
-      
-          // Check if the user already exists
-          let user = await prisma.user.findUnique({
-            where: {
-              email: invitation.email,
-            },
-          });
-      
-          if (!user) {
-            // Create a new user account
-            user = await prisma.user.create({
-              data: {
-                email: invitation.email,
-                password: '123456', // Set a temporary password, user can change it later
-              },
-            });
+          
+          // create user
+          let {firstName, lastName,username, email, password, avatar} = req.body
+          if (!username || !email||!password){
+              return res.status(400).json({message: 'username, email and password are required!'})
           }
+          const hashedPass = await bcrypt.hash(password, saltRounds)
+          const user = await prisma.user.create({
+              data:{
+                  first_name: firstName,
+                  last_name: lastName,
+                  username: username,
+                  email:email,
+                  password: hashedPass,
+                  // avatar:null
+              }
+          })
+          
+          let generalChannel = await prisma.channel.findMany({
+            where:{
+              workspace_id: invitation.workspace_id,
+              is_general: true
+            }
+          })
 
           // Add the user to the workspace
           await prisma.workspaceMember.create({
@@ -277,21 +393,82 @@ const workspaceController = {
               workspace_id: invitation.workspace_id,
               is_owner: false,
             },
-          });
+          })
 
-        // Delete the invitation
-        //   await prisma.workspaceInvitation.delete({
-        //     where: {
-        //       id: invitation.id,
-        //     },
-        //   });
-      
-          return res.status(200).json({ message: 'Invitation accepted successfully & user account created' });
+          await prisma.channelMember.create({
+            data: {
+              user: {
+                connect: { id: user.id }, // Connect to the existing user by ID
+              },
+              Channel: {
+                connect: { id: generalChannel[0].id },
+              }
+            },
+          })
+
+          // update the invitation status to true
+          await prisma.workspaceInvitation.update({
+            where: {
+              id: invitation.id,
+            },
+            data:{
+              status:true
+            }
+          })
+
+          return res.status(201).json({ message: 'Invitation accepted successfully & user account created' });
         } catch (error) {
           console.error('Error accepting workspace invitation:', error);
           return res.status(500).json({ error: 'Failed to accept invitation' });
         }
-      })
+    }),
+
+    getMembers: async(async(req,res)=>{
+      let wsId = req.query.id
+      let channelId = req.query.chId
+      try {
+
+      // Fetch all members of the workspace
+      const workspaceMembers = await prisma.workspaceMember.findMany({
+        where: {
+            workspace_id: wsId,
+        },
+        include: {
+            User: {
+                select: {
+                    id: true,
+                    first_name: true,
+                    last_name: true,
+                    username: true,
+                    email: true,
+                    avatar: true,
+                },
+            },
+        },
+      });
+
+      // Fetch all members of the specified channel
+      const channelMembers = await prisma.channelMember.findMany({
+          where: {
+              channel_id: channelId,
+          },
+          select: {
+              user_id: true,
+          },
+      });
+
+      // Extract user IDs from channel members
+      const channelMemberIds = channelMembers.map(member => member.user_id);
+
+      // Filter workspace members to exclude channel members
+      const members = workspaceMembers.filter(member => !channelMemberIds.includes(member.User.user_id));
+
+      res.status(200).json({members})
+
+      } catch (error) {
+        throw error
+      }
+    })
 }
 
 

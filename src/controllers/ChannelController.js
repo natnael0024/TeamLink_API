@@ -4,11 +4,11 @@ import async from 'express-async-handler'
 const channelController = {
     create: async(async(req,res)=>{
         const wsId = parseInt(req.params.wsId)
+        console.log(req.body, wsId)
         let { name, avatar, cover} = req.body
         if(!name){
             return res.status(400).json({message:'channel name is required'})
         }
-
         try{
             // check if ws exist and belong to the user
             let ws = await prisma.workspace.findUnique({
@@ -62,8 +62,8 @@ const channelController = {
     }),
 
     getChannel: async(async(req,res)=>{
-        const wsId = parseInt(req.params.wsId)
-        const channelId = parseInt(req.params.channelId)
+        const channelId = parseInt(req.params.id)
+        console.log('channelID',channelId)
         let ws = await prisma.channel.findUnique({
             where:{
                 id:channelId,
@@ -74,9 +74,49 @@ const channelController = {
                 }
             },
             include: {
-                members: true, 
+                members: {
+                    include: {
+                      user: {
+                        select: {
+                          id: true,
+                          first_name: true,
+                          last_name: true,
+                          username: true,
+                          email: true,
+                          avatar: true,
+                          created_at: true,
+                          updated_at: true,
+                        },
+                      },
+                    },
+                },
+                messages: {
+                  orderBy: { created_at: 'asc' },
+                //   take: 30,
+                  include: {
+                    sender: {
+                      select: {
+                        id: true,
+                        first_name: true,
+                        last_name: true,
+                        username: true,
+                        avatar: true,
+                      },
+                    },
+                    recipient: {
+                      select: {
+                        id: true,
+                        first_name: true,
+                        last_name: true,
+                        username: true,
+                        avatar: true,
+                      },
+                    },
+                },
             },
-        })
+        }
+    })
+
         if(!ws)
             return res.status(404).json({message:'channel not found'})   
         return res.status(200).json(ws)
@@ -123,36 +163,66 @@ const channelController = {
     }),
 
     addMember: async(async(req,res)=>{
-        const wsId = parseInt(req.params.wsId)
         const channelId = parseInt(req.params.channelId)
-        const { userId } = req.body
-        let wsAndChannel = await prisma.workspace.findUnique({
-            where: {
-                id: wsId,
-                ownerId: req.user.userId
-            },
-            include: {
-                channels: {
-                    where: {
-                        id: channelId
-                    }
-                }
-            }
-        });
+        const { userIds } = req.body
         
-        if (!wsAndChannel || wsAndChannel.channels.length === 0) {
-            return res.status(404).json({ message: 'workspace or channel not found' });
-        }
-        
-        // let channel = wsAndChannel.channels[0];
-
-        let channelMember = await prisma.channelMember.create({
-            data:{
+        try {
+            // Filter out user IDs that are already members of the channel
+            const existingMembers = await prisma.channelMember.findMany({
+              where: {
                 channel_id: channelId,
-                user_id:userId
-            }
-        })
-        return res.status(201).json({message:'success'})
+                user_id: { in: userIds },
+              },
+              select: { user_id: true },
+            });
+        
+            const existingUserIds = existingMembers.map((member) => member.user_id);
+            const newUserIds = userIds.filter((userId) => !existingUserIds.includes(userId));
+        
+            // Create channel members for new user IDs only
+            const channelMembers = newUserIds.map((userId) => ({
+              channel_id: Number(channelId),
+              user_id: Number(userId),
+            }));
+        
+            const createdMembers = await prisma.channelMember.createMany({
+              data: channelMembers,
+              skipDuplicates: true,
+            });
+        
+            res.status(201).json({ message: 'Members added successfully' });
+          } catch (error) {
+            throw error;
+          }
+    }),
+
+    getMembers: async(async(req,res)=>{
+        const channelId = parseInt(req.params.channelId)
+        try {
+    
+            const channelMembers = await prisma.channelMember.findMany({
+                where: {
+                    channel_id: channelId,
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            first_name: true,
+                            last_name: true,
+                            username: true,
+                            email: true,
+                            avatar: true,
+                        },
+                    },
+                },
+            });
+
+            res.status(200).json({ channelMembers });
+            
+        } catch (error) {
+            throw error
+        }
     })
 }
 

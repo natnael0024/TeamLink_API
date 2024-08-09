@@ -19,10 +19,8 @@ const authController = {
         if(user){
             return res.status(409).json({message:'A user with this email already exists'})
         }
-        console.log(req.body)
         
         const hashedPass = await bcrypt.hash(password, saltRounds)
-        console.log(hashedPass)
         try{
             const newUser = await prisma.user.create({
                 data:{
@@ -35,9 +33,9 @@ const authController = {
                 }
             })
 
-            delete newUser.password
-
-            res.status(201).json(newUser)
+            // delete newUser.password
+            console.log(newUser.id)
+            res.status(201).json(newUser);
         } catch(error){
             throw error
             return res.status(500).json({message:'Error ocurred: ', error})
@@ -45,6 +43,7 @@ const authController = {
     }),
 
     login: async(async(req,res)=>{
+        console.log(req.body)
         let {email, password} = req.body
         if(!email || !password){
             return res.status(400).json({message: 'email and password are required'})
