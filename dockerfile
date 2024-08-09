@@ -16,5 +16,7 @@ COPY . .
 # Expose the port the application will run on
 EXPOSE 3000
 
+RUN prisma generate
+
 # Set the command to start the application
 CMD ["npm", "run", "server"]
