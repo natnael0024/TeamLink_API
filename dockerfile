@@ -1,6 +1,9 @@
 # Use a lightweight Node.js runtime as the base image
 FROM node:18-slim
 
+# Install OpenSSL
+RUN apt-get update && apt-get install -y openssl
+
 # Set the working directory
 WORKDIR /app
 
