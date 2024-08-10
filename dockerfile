@@ -1,28 +1,20 @@
-# Use a lightweight Node.js runtime as the base image
-FROM node:18-slim
+# Use the official Node.js image as the base image
+FROM node:16
 
-# Install OpenSSL
-RUN apt-get update && apt-get install -y openssl
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# Set the working directory
-WORKDIR /app
-
-# Copy the package.json and package-lock.json files
+# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install the application dependencies
+RUN npm install 
 
-# generate prisma client
-# RUN npx prisma generate  --schema=./prisma/schema.prisma
-
-
-# Copy the application code
+# Copy the rest of the application code to the working directory
 COPY . .
 
-# Expose the port the application will run on
+# Expose the port the app runs on
 EXPOSE 3000
 
 # Set the command to start the application
-# CMD ["npm", "run", "server"]
-CMD ["prisma","generate"]
+CMD ["npm", "run", "server"]
