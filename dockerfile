@@ -24,4 +24,5 @@ COPY . .
 EXPOSE 3000
 
 # Set the command to start the application
-CMD ["npm", "run", "server"]
+# CMD ["npm", "run", "server"]
+CMD ["prisma","generate"]
