@@ -27,8 +27,6 @@ RUN yarn install --frozen-lockfile
 
 RUN yarn prisma generate
 
-RUN yarn tsc
-
 FROM node:20-alpine AS runner
 
 ENV NODE_ENV=production
