@@ -25,7 +25,7 @@ COPY . .
 
 #RUN yarn install --frozen-lockfile
 
-#RUN yarn prisma generate
+RUN yarn prisma generate
 
 #FROM node:20-alpine AS runner
 
