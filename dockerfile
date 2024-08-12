@@ -46,6 +46,3 @@ COPY --chown=node:node --from=builder  /app/node_modules/.prisma/client ./node_m
 EXPOSE 4500
 
 CMD ["npm", "run", "server"]
-
-# Set the command to start the application
-CMD ["npm", "run", "server"]
