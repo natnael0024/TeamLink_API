@@ -33,14 +33,14 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY --chown=node:node --from=builder /app/package.json .
+#COPY --chown=node:node --from=builder /app/package.json .
 
-COPY --chown=node:node --from=builder /app/build .
+#COPY --chown=node:node --from=builder /app/build .
 
-RUN yarn install --production && yarn cache clean --all
+RUN yarn install --production 
 
-COPY --chown=node:node --from=builder  /app/node_modules/.prisma/client ./node_modules/.prisma/client
+#COPY --chown=node:node --from=builder  /app/node_modules/.prisma/client ./node_modules/.prisma/client
 
-EXPOSE 4500
+EXPOSE 3000
 
 CMD ["npm", "run", "server"]
