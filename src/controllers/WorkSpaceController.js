@@ -227,7 +227,7 @@ const workspaceController = {
             const mailOptions = {
               from: myEmail,
               to: email,
-              subject: 'Invitation to join a workspace',
+              subject: 'Invitation to join a workspace',                                      
             //   text: `You have been invited to join the "${workspace.name}" workspace. Please click the following link to accept the invitation: ${invitationLink}`,
             html: `
                 <html>
