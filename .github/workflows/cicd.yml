@@ -12,6 +12,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        
+      - name: Set up environment variables
+        run: |
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: docker build -t hub.docker.com/yba:teamlink -f dockerfile .
